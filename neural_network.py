@@ -1,30 +1,13 @@
-"""
-Written by boshtannik.
-e-mail: boshtannik@gmail.com
-Inpiration got from book "Crete own neural network" by Tariq Rashid.
-The main idea was to create neural network by representing it via matricies
-and their multiplication, but I decide to walk in other way, in order to
-picture the whole architecture in the object-oriented way.
-
-The main idea was to this project - was to put basement to let further reconfiguration
-of the neural network architecture, i. e. mean to:
-    * Being able to link new neurons into the existing neural network.
-    * Cut their pieces like connections.
-    * Connect other neural networks to newly created neurons of existing neural network.
-    * Having fun.
-    * etc..
-
-What else to be expected:
-    * Being able to save neurons connections weights into file.
-    * Restore previously trained neural network connection weights from file.
-    * Run neural network predict method from command line.
-    * Support of biasses to be added into hidden layers. - Done!
-"""
-
-
 from math import exp
+import os
+import json
 from typing import List
-from random import randint, choice
+from random import randint
+
+
+TRAIN_DATA = "./mnist_train.csv"
+TEST_DATA = "./mnist_test.csv"
+PERCEPTRON_SAVE_FILE = 'perceptron.json'
 
 
 class Connection:
@@ -65,6 +48,8 @@ class Neuron:
         self.input_connections = []
 
     def activation_function(self, x):
+        if x < 0:
+            return 1 - 1 / (1 + exp(x))
         return 1 / (1 + exp(-x))
 
     def derivative_activation_function(self, x):
@@ -79,6 +64,60 @@ class Neuron:
 
     def get_error_derivative(self) -> float:
         return self.error * self.derivative_activation_function(self.output)
+
+
+class PerceptronSaver:
+    def __init__(self, perceptron: 'Perceptron') -> None:
+        self.perceptron = perceptron
+
+    def save_to_file(self, filename: str):
+        # Get configuration of layers.
+        # Get configuration of biases.
+        # Iterate over layers -> neurons -> connections -> save connections to file.
+        layers_configuration = []
+        for layer in self.perceptron.layers:
+            layers_configuration.append( sum( 1 for n in layer if not n.is_bias ) )
+
+        biases_configuration = []
+        for layer in self.perceptron.layers:
+            biases_configuration.append( sum( 1 for n in layer if n.is_bias ) )
+
+        weights_configuration = []
+        for layer in self.perceptron.layers:
+            for neuron in layer:
+                for connection in neuron.output_connections:
+                    weights_configuration.append(connection.weight)
+
+        object_to_save = {
+            "layers_configuration": layers_configuration,
+            "biases_configuration": biases_configuration,
+            "weights_configuration": weights_configuration
+        }
+
+        with open(filename, "w") as f:
+            json.dump(object_to_save, f)
+
+    def load_from_file(self, filename: str):
+        # Load configuration of layers -> instantiate it.
+        # Load configuration of biases -> instantiate them.
+        # Iterate over existing weights, being created by NN -> set each weight, loaded from file.
+        with open(filename, "r") as f:
+            load_object = json.load(f)
+
+        layers_configuration = load_object.get("layers_configuration")
+        biases_configuration = load_object.get("biases_configuration")
+        weights_configuration = load_object.get("weights_configuration")
+
+        self.perceptron.build(layers_configuration)
+
+        for layer_index, biases_count in enumerate(biases_configuration):
+            for _ in range(biases_count):
+                self.perceptron.add_bias(layer_number=layer_index)
+
+        for layer in self.perceptron.layers:
+            for neuron in layer:
+                for connection in neuron.output_connections:
+                    connection.weight = weights_configuration.pop(0)
 
 
 class Perceptron:
@@ -98,6 +137,28 @@ class Perceptron:
         # hidden layers are all except input and output
         self.input_layer = self.layers[0]
         self.output_layer = self.layers[-1]
+
+        self.saver = PerceptronSaver(self)
+
+    def build(self, layers: List[int]):
+        self.layers = []
+        for layer in layers:
+            self.layers.append([Neuron() for _ in range(layer)])
+
+        for i in range(len(self.layers) - 1):
+            for from_neuron in self.layers[i]:
+                for to_neuron in self.layers[i + 1]:
+                    Connection(from_neuron, to_neuron, randint(-100, 100) * 0.01)
+
+        # hidden layers are all except input and output
+        self.input_layer = self.layers[0]
+        self.output_layer = self.layers[-1]
+
+    def save(self):
+        self.saver.save_to_file(PERCEPTRON_SAVE_FILE)
+
+    def load(self):
+        self.saver.load_from_file(PERCEPTRON_SAVE_FILE)
 
     def add_bias(self, layer_number: int):
         """
@@ -167,7 +228,7 @@ class Perceptron:
         
         # Calculate the error for each output neuron
         errors = self.get_errors(expected_values)
-        total_error = sum(errors)
+        total_errors = sum(errors)
 
         # 1 Clean all neuron errors
         for layer in self.layers:
@@ -195,85 +256,87 @@ class Perceptron:
                     input_connection.adjust_weight(learning_rate=learning_rate)
         
         # Print the average error for this epoch
-        print(f'Average error: {total_error/len(inputs)}')
+        """
+        print(f'Average error: {total_errors/len(inputs)}')
+        """
+
+
+def generate_expected_values(label: int) -> List[float]:
+    return [0.99 if i == label else 0.01 for i in range(10)]
 
 
 def test_neural_network():
-    """
-    This is almost default hello world test case for testing
-    newly baked neural network.
-    This test simulates, how the neural network did understand
-    the logic behind XOR logic module.
-
-    The XOR logic truth table shall look like this
-    ------------------------------
-    | input 1 | input 2 | output |
-    ------------------------------
-    |    0    |    0    |    0   |
-    ------------------------------
-    |    0    |    1    |    1   |
-    ------------------------------
-    |    1    |    0    |    1   |
-    ------------------------------
-    |    1    |    1    |    0   |
-    ------------------------------
-    """
     # Define the neural network architecture
 
-    # Smallest configuration for this task that i found is: 2, 3, 1. And one bias,
-    # connected to 2nd layer. Works in ~30% Cases. Often shits itself.
-    nn = Perceptron(layers=[2, 3, 3, 1])
-    nn.add_bias(layer_number=0)
-    nn.add_bias(layer_number=1)
-    nn.add_bias(layer_number=2)
+    nn = Perceptron(layers=[784, 256, 10])
+    for i in range(len(nn.layers) - 1):
+        nn.add_bias(layer_number=i)
 
-    # Set data for training.
-    inputs = [
-        [0.0, 0.0],
-        [0.0, 1.0],
-        [1.0, 0.0],
-        [1.0, 1.0]
-    ]
+    if os.path.exists(PERCEPTRON_SAVE_FILE):
+        print("Loading")
+        nn.load()
+    else:
+        print("Training")
+        lines_to_read = 30000
+        with open(TRAIN_DATA, "r") as f:
+            for line in f.readlines():
+                if lines_to_read <= 0:
+                    break
 
-    expected_values = [
-        [0.0],
-        [1.0],
-        [1.0],
-        [0.0]
-    ]
+                line = line.replace('\n', '')
+                data = line.split(',')
 
-    # Prepare data in order (<Data to be feed in>, <Expected data to be received>)
-    train_data = list(zip(inputs, expected_values))
+                label = int(data[0])
+                """
+                print(label)
+                """
+                pixels = [
+                    float(p) / 255.0 * 0.99 + 0.01
+                    for p
+                    in data[1:]
+                ]
 
-    # Train it 100000 times.
-    train_generations = 100000
-    for _ in range(train_generations):
-        input, expected_val = choice(train_data)
-        nn.train(input, expected_val, learning_rate=0.1)
+                expected_values = generate_expected_values(label)
+                nn.train(inputs=pixels, expected_values=expected_values, learning_rate=1)
 
-    # Test the neural network
-    got_1_prediction, = nn.predict(inputs=inputs[0])
-    got_1_prediction *= 100  # Convert to percents
-    test_1_passed = got_1_prediction < 3  # Check if confidence in activation is less than 3%
-    print(f"Test with input data: {inputs[0]} is {'' if test_1_passed else 'NOT '}passed. with result: {got_1_prediction:.2f}% confidence.")
+                """
+                got_values = [neuron.output for neuron in nn.output_layer]
+                errors = nn.get_errors(expected_values=expected_values)
+                for label, expected_value, got_value,  error in zip(list(range(len(expected_values))), expected_values, got_values, errors):
+                    print(f"label: {label}, expected: {expected_value} got: {got_value:.2f} error: {error:.2f}")
+                """
 
-    got_2_prediction, = nn.predict(inputs=inputs[1])
-    got_2_prediction *= 100  # Convert to percents
-    test_2_passed = got_2_prediction > 97  # Check if confidence in activation is less than 3%
-    print(f"Test with input data: {inputs[1]} is {'' if test_2_passed else 'NOT '}passed. with result: {got_2_prediction:.2f}% confidence.")
+                lines_to_read -= 1
 
-    got_3_prediction, = nn.predict(inputs=inputs[2])
-    got_3_prediction *= 100  # Convert to percents
-    test_3_passed = got_3_prediction > 97  # Check if confidence in activation is less than 3%
-    print(f"Test with input data: {inputs[2]} is {'' if test_3_passed else 'NOT '}passed. with result: {got_3_prediction:.2f}% confidence.")
+                if lines_to_read % 100 == 0:
+                    print(f"{lines_to_read} lines left")
 
-    got_4_prediction, = nn.predict(inputs=inputs[3])
-    got_4_prediction *= 100  # Convert to percents
-    test_4_passed = got_4_prediction < 3  # Check if confidence in activation is less than 3%
-    print(f"Test with input data: {inputs[3]} is {'' if test_4_passed else 'NOT '}passed. with result: {got_4_prediction:.2f}% confidence.")
+    print("Testing:")
+    with open(TEST_DATA, "r") as f:
+        for line in f.readlines():
+            line = line.replace('\n', '')
+            data = line.split(',')
 
-    all_passed = all((test_1_passed, test_2_passed, test_3_passed, test_4_passed))
-    print(f"Finally. The neural network did{('' if all_passed else ' NOT')} pass the test", )
+            label = int(data[0])
+            pixels = [
+                float(p) / 255.0 * 0.99 + 0.01
+                for p
+                in data[1:]
+            ]
+            print("Label: ", label)
+
+            expected_values = generate_expected_values(label)
+
+            results = nn.predict(inputs=pixels)
+            print("Results:")
+            for label, expected_value, result_value in zip(list(range(10)), expected_values, results):
+                print(f"label: {label}, expected: {expected_value} got: {result_value :.2f}")
+
+    if not os.path.exists(PERCEPTRON_SAVE_FILE):
+        nn.save()
+
+
+# NOTE: Can use pyplot to draw numbers to better visualize the symbols that are in the data.
 
 
 if __name__ == '__main__':
