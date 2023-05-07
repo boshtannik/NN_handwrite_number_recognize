@@ -277,12 +277,9 @@ def test_neural_network():
         nn.load()
     else:
         print("Training")
-        lines_to_read = 30000
+        lines_red = 0
         with open(TRAIN_DATA, "r") as f:
             for line in f.readlines():
-                if lines_to_read <= 0:
-                    break
-
                 line = line.replace('\n', '')
                 data = line.split(',')
 
@@ -306,10 +303,10 @@ def test_neural_network():
                     print(f"label: {label}, expected: {expected_value} got: {got_value:.2f} error: {error:.2f}")
                 """
 
-                lines_to_read -= 1
+                lines_red += 1
 
-                if lines_to_read % 100 == 0:
-                    print(f"{lines_to_read} lines left")
+                if lines_red % 100 == 0:
+                    print(f"{lines_red} lines red")
 
     print("Testing:")
     with open(TEST_DATA, "r") as f:
