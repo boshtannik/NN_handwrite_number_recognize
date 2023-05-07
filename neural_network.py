@@ -228,7 +228,6 @@ class Perceptron:
         
         # Calculate the error for each output neuron
         errors = self.get_errors(expected_values)
-        total_errors = sum(errors)
 
         # 1 Clean all neuron errors
         for layer in self.layers:

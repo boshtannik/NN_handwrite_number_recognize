@@ -4,3 +4,5 @@ mnist_test.csv
 mnist_train.csv
 mnist_train_100.csv
 perceptron.json
+__pycache__/
+venv/
