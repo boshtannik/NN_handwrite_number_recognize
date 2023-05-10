@@ -216,7 +216,10 @@ class Perceptron:
             errors.append(self.output_layer[i].get_error(expected_values[i]))
         return errors
     
-    def train(self, inputs: List[float], expected_values: List[float], learning_rate: float):
+    def train(self, inputs: List[float], expected_values: List[float], learning_rate: float) -> float:
+        """
+        Returns average error value
+        """
         if len(inputs) != len([n for n in self.input_layer if not n.is_bias]):
             raise ValueError('Number of inputs must be equal to size of input layer')
 
@@ -228,6 +231,7 @@ class Perceptron:
         
         # Calculate the error for each output neuron
         errors = self.get_errors(expected_values)
+        total_errors = sum(errors)
 
         # 1 Clean all neuron errors
         for layer in self.layers:
@@ -255,19 +259,18 @@ class Perceptron:
                     input_connection.adjust_weight(learning_rate=learning_rate)
         
         # Print the average error for this epoch
-        """
-        print(f'Average error: {total_errors/len(inputs)}')
-        """
+        # print(f'Average error: {total_errors/len(inputs)}')
+        return total_errors/len(inputs)
 
 
 def generate_expected_values(label: int) -> List[float]:
     return [0.99 if i == label else 0.01 for i in range(10)]
 
 
-def test_neural_network():
+def run_neural_network():
     # Define the neural network architecture
 
-    nn = Perceptron(layers=[784, 256, 10])
+    nn = Perceptron(layers=[784, 512, 32, 10])
     for i in range(len(nn.layers) - 1):
         nn.add_bias(layer_number=i)
 
@@ -277,35 +280,39 @@ def test_neural_network():
     else:
         print("Training")
         lines_red = 0
-        with open(TRAIN_DATA, "r") as f:
-            for line in f.readlines():
-                line = line.replace('\n', '')
-                data = line.split(',')
 
-                label = int(data[0])
-                """
-                print(label)
-                """
-                pixels = [
-                    float(p) / 255.0 * 0.99 + 0.01
-                    for p
-                    in data[1:]
-                ]
+        EPOCHS = 2
+        for epoch in range(EPOCHS):
+            with open(TRAIN_DATA, "r") as f:
+                lines = f.readlines()
+                for line in lines:
+                    line = line.replace('\n', '')
+                    data = line.split(',')
 
-                expected_values = generate_expected_values(label)
-                nn.train(inputs=pixels, expected_values=expected_values, learning_rate=1)
+                    label = int(data[0])
+                    """
+                    print(label)
+                    """
+                    pixels = [
+                        float(p) / 255.0 * 0.99 + 0.01
+                        for p
+                        in data[1:]
+                    ]
 
-                """
-                got_values = [neuron.output for neuron in nn.output_layer]
-                errors = nn.get_errors(expected_values=expected_values)
-                for label, expected_value, got_value,  error in zip(list(range(len(expected_values))), expected_values, got_values, errors):
-                    print(f"label: {label}, expected: {expected_value} got: {got_value:.2f} error: {error:.2f}")
-                """
+                    expected_values = generate_expected_values(label)
+                    avg_error = nn.train(inputs=pixels, expected_values=expected_values, learning_rate=1)
 
-                lines_red += 1
+                    """
+                    got_values = [neuron.output for neuron in nn.output_layer]
+                    errors = nn.get_errors(expected_values=expected_values)
+                    for label, expected_value, got_value,  error in zip(list(range(len(expected_values))), expected_values, got_values, errors):
+                        print(f"label: {label}, expected: {expected_value} got: {got_value:.2f} error: {error:.2f}")
+                    """
 
-                if lines_red % 100 == 0:
-                    print(f"{lines_red} lines red")
+                    lines_red += 1
+
+                    if lines_red % 100 == 0:
+                        print(f"Epoch: {epoch} - {lines_red} lines red, with average errror: {avg_error}")
 
     print("Testing:")
     with open(TEST_DATA, "r") as f:
@@ -336,4 +343,5 @@ def test_neural_network():
 
 
 if __name__ == '__main__':
-    test_neural_network()
+    run_neural_network()
+

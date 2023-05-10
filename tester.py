@@ -1,6 +1,9 @@
 import pygame
 from typing import List
 from neural_network import Perceptron, TEST_DATA
+import time
+
+next_predict_allow = 0
 
 pygame.init()
 
@@ -25,10 +28,34 @@ class Drawer:
 
     def load_data(self):
         return self.data.copy()
+    
+    def _put_pixel(self, col: int, row: int, pressure: float, recursion_level: int):
+        if recursion_level < 0:
+            return
+
+        if (col < 0 or col >= GRID_SIZE) or (row < 0 or row >= GRID_SIZE):
+            return
+
+        index = row * GRID_SIZE + col
+
+        self.data[index] += pressure
+        if self.data[index] > 255: self.data[index] = 255
+
+        # Left of
+        self._put_pixel(col-1, row, pressure * 0.5, recursion_level=recursion_level-1)
+        # Right of
+        self._put_pixel(col+1, row, pressure * 0.5, recursion_level=recursion_level-1)
+        # Up of
+        self._put_pixel(col, row-1, pressure * 0.5, recursion_level=recursion_level-1)
+        # Below of
+        self._put_pixel(col, row+1, pressure * 0.5, recursion_level=recursion_level-1)
+
+        return True
 
     def handle_event(self):
         if not mouse_down:
             return False
+
         m_x, m_y = pygame.mouse.get_pos()
 
         if m_x > PIXEL_SIZE * GRID_SIZE or m_y > PIXEL_SIZE * GRID_SIZE:
@@ -37,10 +64,7 @@ class Drawer:
         col = m_x // PIXEL_SIZE
         row = m_y // PIXEL_SIZE
 
-        index = row * GRID_SIZE + col
-
-        self.data[index] += 16
-        if self.data[index] > 255: self.data[index] = 255
+        self._put_pixel(col, row, 16, recursion_level=2)
         return True
 
     def build_image(self):
@@ -106,7 +130,7 @@ class Stats:
             font_surface = font.render(str(index), False, (255, 255, 255))
             font_rect = font_surface.get_rect(center=rect.center)
             self.surface.blit(font_surface, font_rect)
-            p_y += font_rect.height + font_rect.height * 0.4
+            p_y += font_rect.height + font_rect.height * 0.3
 
             scalable_rect = pygame.Rect(
                 font_rect.x,
@@ -139,24 +163,39 @@ b_y = 10
 file = open(TEST_DATA, 'r')
 
 def button_next_handler():
-    data_line = file.readline()
-    data_line = data_line.replace("\n", "")
-    data_line = data_line.split(",")
-    data_line = [float(f) for f in data_line[1:]]
-    drawer.set_data(data_line)
-    results = nn.predict(inputs=data_line)
+    data = file.readline()
+    data = data.replace("\n", "")
+    data = data.split(",")
+    data = [float(f) for f in data[1:]]
+    drawer.set_data(data)
+    results = nn.predict(inputs=data)
     stats.set_results(results)
 
 button_font = pygame.font.Font(None, 36)
 button_next = Button(x=b_x, y=b_y, width=120, height=GRID_SIZE, on_click=button_next_handler, text='Next', color=(255,255,255), font=button_font)
 
 def button_recognize_handler():
+    global next_predict_allow
+
     data = drawer.load_data()
+    if time.time() < next_predict_allow:
+        return
+
+    results = nn.predict(inputs=data)
+    stats.set_results(results)
+    next_predict_allow = time.time() + 0.01
+
+b_y += 10 + GRID_SIZE
+button_recognize = Button(x=b_x, y=b_y, width=120, height=28, on_click=button_recognize_handler, text='Recognize', color=(255,255,255), font=button_font)
+
+def button_clear_handler():
+    data = [0.0 for _ in range(GRID_SIZE**2)]
+    drawer.set_data(data)
     results = nn.predict(inputs=data)
     stats.set_results(results)
 
 b_y += 10 + GRID_SIZE
-button_recognize = Button(x=b_x, y=b_y, width=120, height=28, on_click=button_recognize_handler, text='Recognize', color=(255,255,255), font=button_font)
+button_clear = Button(x=b_x, y=b_y, width=120, height=28, on_click=button_clear_handler, text='Clear', color=(255,255,255), font=button_font)
 
 b_y += 10 + GRID_SIZE
 
@@ -177,17 +216,19 @@ while True:
 
         if drawer.handle_event():
             button_recognize_handler()
+
         button_next.handle_event(event)
         button_recognize.handle_event(event)
+        button_clear.handle_event(event)
 
     # Fill the background with white
     screen.fill((255, 255, 255))
     drawer.draw(screen)
     button_next.draw(screen)
     button_recognize.draw(screen)
+    button_clear.draw(screen)
     stats.draw(screen)
 
     # Update the display
     pygame.display.update()
-
 
