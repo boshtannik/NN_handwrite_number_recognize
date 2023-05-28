@@ -270,7 +270,7 @@ def generate_expected_values(label: int) -> List[float]:
 def run_neural_network():
     # Define the neural network architecture
 
-    nn = Perceptron(layers=[784, 512, 32, 10])
+    nn = Perceptron(layers=[784, 32, 16, 10])
     for i in range(len(nn.layers) - 1):
         nn.add_bias(layer_number=i)
 
@@ -281,7 +281,7 @@ def run_neural_network():
         print("Training")
         lines_red = 0
 
-        EPOCHS = 2
+        EPOCHS = 5
         for epoch in range(EPOCHS):
             with open(TRAIN_DATA, "r") as f:
                 lines = f.readlines()
@@ -300,7 +300,7 @@ def run_neural_network():
                     ]
 
                     expected_values = generate_expected_values(label)
-                    avg_error = nn.train(inputs=pixels, expected_values=expected_values, learning_rate=1)
+                    avg_error = nn.train(inputs=pixels, expected_values=expected_values, learning_rate=0.1)
 
                     """
                     got_values = [neuron.output for neuron in nn.output_layer]
@@ -312,7 +312,7 @@ def run_neural_network():
                     lines_red += 1
 
                     if lines_red % 100 == 0:
-                        print(f"Epoch: {epoch} - {lines_red} lines red, with average errror: {avg_error}")
+                        print(f"Epoch: {epoch} of {EPOCHS} - {lines_red} lines red, with average errror: {avg_error}")
 
     print("Testing:")
     with open(TEST_DATA, "r") as f:

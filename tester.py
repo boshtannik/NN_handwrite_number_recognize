@@ -3,7 +3,7 @@ from typing import List
 from neural_network import Perceptron, TEST_DATA
 import time
 
-next_predict_allow = 0
+prediction_allow_time = 0
 
 pygame.init()
 
@@ -174,19 +174,16 @@ def button_next_handler():
 button_font = pygame.font.Font(None, 36)
 button_next = Button(x=b_x, y=b_y, width=120, height=GRID_SIZE, on_click=button_next_handler, text='Next', color=(255,255,255), font=button_font)
 
-def button_recognize_handler():
-    global next_predict_allow
+def recognize_symbol():
+    global prediction_allow_time
 
     data = drawer.load_data()
-    if time.time() < next_predict_allow:
+    if time.time() < prediction_allow_time:  # Is no time yet to come.
         return
 
     results = nn.predict(inputs=data)
     stats.set_results(results)
-    next_predict_allow = time.time() + 0.01
-
-b_y += 10 + GRID_SIZE
-button_recognize = Button(x=b_x, y=b_y, width=120, height=28, on_click=button_recognize_handler, text='Recognize', color=(255,255,255), font=button_font)
+    prediction_allow_time = time.time() + 0.01
 
 def button_clear_handler():
     data = [0.0 for _ in range(GRID_SIZE**2)]
@@ -215,17 +212,15 @@ while True:
             mouse_down = False
 
         if drawer.handle_event():
-            button_recognize_handler()
+            recognize_symbol()
 
         button_next.handle_event(event)
-        button_recognize.handle_event(event)
         button_clear.handle_event(event)
 
     # Fill the background with white
     screen.fill((255, 255, 255))
     drawer.draw(screen)
     button_next.draw(screen)
-    button_recognize.draw(screen)
     button_clear.draw(screen)
     stats.draw(screen)
 
