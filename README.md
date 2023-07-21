@@ -9,7 +9,7 @@ Two options of dataset available. So you can install it in few ways.
 You can chose to install large or small dataset.
 To install large dataset for training (60 000 examples) - run ```bash ./install_data.sh```. Or to install smaller dataset for training (100 examples) - run ```bash ./install_data_small.sh```
 
-Then you can run ```python neural_network.py``` - It will open files to train NN, and will train it.
+Then you can run ```python neural_network.py``` - It will use downloaded files to train NN model.
 I would reccoment to use ```pypy``` instead of ```python``` - Special python interpreter with JIT compiler - which will make train a LOT faster
 
 Also you can visually check - if the neural network did good train. For this purpose `tester.py` - is provided.
