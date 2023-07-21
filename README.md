@@ -6,9 +6,8 @@ Fork of simple neural network to recognize handwrite digits, took from MNIST dat
 To work with neural network - it must have mnist dataset installed.
 Two options of dataset available. So you can install it in few ways.
 
-1 - To install large dataset for training (60 000 examples) - run ```bash ./install_data.sh``` - Will download datasets
-or
-2 - To install smaller dataset for training (100 examples) - run ```bash ./install_data_small.sh```	- Will download datasets
+You can chose to install large or small dataset.
+To install large dataset for training (60 000 examples) - run ```bash ./install_data.sh```. Or to install smaller dataset for training (100 examples) - run ```bash ./install_data_small.sh```
 
 Then you can run ```python neural_network.py``` - It will open files to train NN, and will train it.
 I would reccoment to use ```pypy``` instead of ```python``` - Special python interpreter with JIT compiler - which will make train a LOT faster
